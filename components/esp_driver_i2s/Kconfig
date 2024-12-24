@@ -15,6 +15,13 @@ menu "ESP-Driver:I2S Configurations"
             Place I2S control functions into IRAM,
             so that these functions can be IRAM-safe and able to be called in the other IRAM interrupt context.
 
+    config I2S_FORCE_FRAC_DIVISOR
+        bool "Force fractional divisor for PDM mode on v2 HW"
+        default y
+        help
+            Force fractional part of clock divisor to known value.
+            This seems to help reducing noise.
+
     config I2S_ENABLE_DEBUG_LOG
         bool "Enable I2S debug log"
         default n
