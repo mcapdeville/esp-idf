@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2019-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2019-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,8 +7,10 @@
 #include <sys/param.h>
 #include "hal/adc_hal.h"
 #include "hal/assert.h"
+#include "hal/hal_utils.h"
 #include "soc/lldesc.h"
 #include "soc/soc_caps.h"
+#include "hal/log.h"
 
 #if SOC_IS(ESP32)
 //ADC utilises I2S0 DMA on ESP32
@@ -118,12 +120,35 @@ static adc_ll_digi_convert_mode_t get_convert_mode(adc_digi_convert_mode_t conve
 static void adc_hal_digi_sample_freq_config(adc_hal_dma_ctx_t *hal, adc_continuous_clk_src_t clk_src, uint32_t clk_src_freq_hz, uint32_t sample_freq_hz)
 {
 #if !SOC_IS(ESP32)
+#if !CONFIG_ADC_DIGI_CLK_DIV_CALC
     uint32_t interval = clk_src_freq_hz / (ADC_LL_CLKM_DIV_NUM_DEFAULT + ADC_LL_CLKM_DIV_A_DEFAULT / ADC_LL_CLKM_DIV_B_DEFAULT + 1) / 2 / sample_freq_hz;
     //set sample interval
     adc_ll_digi_set_trigger_interval(interval);
     //Here we set the clock divider factor to make the digital clock to 5M Hz
     adc_ll_digi_controller_clk_div(ADC_LL_CLKM_DIV_NUM_DEFAULT, ADC_LL_CLKM_DIV_B_DEFAULT, ADC_LL_CLKM_DIV_A_DEFAULT);
     adc_ll_digi_clk_sel(clk_src);
+#else
+    uint32_t interval;
+    hal_utils_clk_info_t digi_clk_info = {
+        .src_freq_hz = clk_src_freq_hz,
+        .exp_freq_hz = (CONFIG_ADC_SARADC_TARGET_CLK / sample_freq_hz) * sample_freq_hz,
+        .max_integ = APB_SARADC_CLKM_DIV_NUM,
+        .min_integ = 1,
+        .max_fract = APB_SARADC_CLKM_DIV_A,
+    };
+    hal_utils_clk_div_t clk_div;
+    hal_utils_calc_clk_div_frac_fast(&digi_clk_info, &clk_div);
+    interval = (((long long)clk_src_freq_hz << 10) / (((long long)(clk_div.integer) << 10) + ((long long)(clk_div.numerator) << 10) / clk_div.denominator) / sample_freq_hz + 1) >> 1;
+
+    HAL_EARLY_LOGD("adc_hal", "sclk = %ld, Div = %ld + %ld/%ld, Interval = %ld", clk_src_freq_hz, clk_div.integer, clk_div.numerator, clk_div.denominator, interval);
+
+    //set sample interval
+    adc_ll_digi_set_trigger_interval(interval);
+
+    //Here we set the clock divider factor to make the digital clock to CONFIG_ADC_SARADC_TARGET_CLK Hz
+    adc_ll_digi_controller_clk_div(clk_div.integer - 1, clk_div.denominator, clk_div.numerator);
+    adc_ll_digi_clk_sel(clk_src);
+#endif
 #else
     i2s_ll_rx_clk_set_src(adc_hal_i2s_dev, I2S_CLK_SRC_DEFAULT);    /*!< Clock from PLL_D2_CLK(160M)*/
     uint32_t bclk_div = 16;

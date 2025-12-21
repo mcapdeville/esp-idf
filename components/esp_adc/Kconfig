@@ -84,6 +84,22 @@ menu "ADC and ADC Calibration"
         help
             Configure the number of DMA buffers used by adc
 
+    config ADC_DIGI_CLK_DIV_CALC
+        bool "Do not use default adc clk divisors"
+        depends on !IDF_TARGET_ESP32
+        default n
+        help
+            Do not use of default digital controller clk divisors,
+            but calculate precise divisor to achieve a target clock.
+
+    config ADC_SARADC_TARGET_CLK
+        int "Set SARADC target clock frequency"
+        depends on ADC_DIGI_CLK_DIV_CALC
+        default 5280000
+        help
+            The fractional divisor parameters will be calculated at runtime
+            to achieve nearest adc digital clock frequency.
+
     config ADC_ENABLE_DEBUG_LOG
         bool "Enable ADC debug log"
         default n
