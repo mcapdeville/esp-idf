@@ -117,8 +117,8 @@ void i2s_hal_set_tx_clock(i2s_hal_context_t *hal, const i2s_hal_clock_info_t *cl
         i2s_hal_calc_mclk_precise_division(clk_info->sclk, clk_info->mclk, mclk_div_ptr);
         i2s_ll_tx_set_mclk(hal->dev, mclk_div_ptr);
         i2s_ll_tx_set_bck_div_num(hal->dev, clk_info->bclk_div);
-        HAL_EARLY_LOGD("I2S_HAL","src_clk = %ld, div = %ld + %ld/%ld, bdiv = %d, Fs = %ld",clk_info->sclk, mclk_div.integer, mclk_div.numerator, mclk_div.denominator, clk_info->bclk_div,
-	    (int32_t)((((int64_t)clk_info->sclk*mclk_div.denominator) / ((mclk_div.integer*mclk_div.denominator + mclk_div.numerator)*clk_info->bclk_div)+64)/128) );
+        HAL_EARLY_LOGD("i2s_hal", "src_clk = %ld, div = %ld + %ld/%ld, bdiv = %d, Fs = %ld", clk_info->sclk, mclk_div_ptr->integer, mclk_div_ptr->numerator, mclk_div_ptr->denominator, clk_info->bclk_div,
+                       (int32_t)((((int64_t)clk_info->sclk * mclk_div_ptr->denominator) / ((mclk_div_ptr->integer * mclk_div_ptr->denominator + mclk_div_ptr->numerator)*clk_info->bclk_div) + 64) / 128));
     } else {
         i2s_ll_tx_clk_set_src(hal->dev, clk_src);
     }
